@@ -28,6 +28,43 @@ $(() => {
 
 	$(".video").bind("loadedmetadata", function (e) {
 		video_size = {'w': this.videoWidth, 'h': this.videoHeight};
+
+		// Calculate and apply new dimensions for #resizable
+		const videoWidth = this.videoWidth;
+		const videoHeight = this.videoHeight;
+		const maxWidth = 900; // Max width for the container
+		const maxHeight = 500; // Max height for the container
+
+		let newWidth = videoWidth;
+		let newHeight = videoHeight;
+
+		// Fit to maxWidth
+		if (newWidth > maxWidth) {
+			newWidth = maxWidth;
+			newHeight = (videoHeight / videoWidth) * newWidth;
+		}
+
+		// Fit to maxHeight if necessary, potentially adjusting width again
+		if (newHeight > maxHeight) {
+			newHeight = maxHeight;
+			newWidth = (videoWidth / videoHeight) * newHeight;
+		}
+
+		// One final check for width if height adjustment pushed it over
+		if (newWidth > maxWidth) {
+			newWidth = maxWidth;
+			newHeight = (videoHeight / videoWidth) * newWidth;
+		}
+
+		$('#resizable').css({
+			'width': newWidth + 'px',
+			'height': newHeight + 'px'
+		});
+
+		// Ensure canvas is also resized after #resizable is set.
+		// The update() function already handles canvas resizing based on video element,
+		// and video element is 100% of #resizable. This should be fine.
+
 		$('.hide_until_load').removeClass('hidden');
 		noUiSlider.create(slider, {
 			start: [0, this.duration],
