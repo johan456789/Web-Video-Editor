@@ -35,26 +35,26 @@ $(() => {
 		const maxWidth = 900; // Max width for the container
 		const maxHeight = 500; // Max height for the container
 
-		let newWidth = videoWidth;
-		let newHeight = videoHeight;
+    // Calculate and apply new dimensions for #resizable
+    const videoWidth = this.videoWidth;
+    const videoHeight = this.videoHeight;
 
-		// Fit to maxWidth
-		if (newWidth > maxWidth) {
-			newWidth = maxWidth;
-			newHeight = (videoHeight / videoWidth) * newWidth;
-		}
+    const $resizable = $('#resizable');
+    const maxWidth = parseInt($resizable.css('max-width'), 10);
+    const maxHeight = parseInt($resizable.css('max-height'), 10);
 
-		// Fit to maxHeight if necessary, potentially adjusting width again
-		if (newHeight > maxHeight) {
-			newHeight = maxHeight;
-			newWidth = (videoWidth / videoHeight) * newHeight;
-		}
+    const widthRatio = maxWidth / videoWidth;
+    const heightRatio = maxHeight / videoHeight;
 
-		// One final check for width if height adjustment pushed it over
-		if (newWidth > maxWidth) {
-			newWidth = maxWidth;
-			newHeight = (videoHeight / videoWidth) * newWidth;
-		}
+    const ratio = Math.min(widthRatio, heightRatio, 1);
+
+    const newWidth = videoWidth * ratio;
+    const newHeight = videoHeight * ratio;
+
+    $('#resizable').css({
+      'width': newWidth + 'px',
+      'height': newHeight + 'px'
+    });
 
 		$('#resizable').css({
 			'width': newWidth + 'px',
