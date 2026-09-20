@@ -28,6 +28,11 @@ $(() => {
 
 	$(".video").bind("loadedmetadata", function (e) {
 		video_size = {'w': this.videoWidth, 'h': this.videoHeight};
+		size_stage_to_video();
+		fit_video_display();
+		if (window.ResizeObserver) {
+			new ResizeObserver(fit_video_display).observe(document.getElementById('resizable'));
+		}
 		$('.hide_until_load').removeClass('hidden');
 		noUiSlider.create(slider, {
 			start: [0, this.duration],
@@ -172,6 +177,35 @@ function getMousePos(canvas, evt) {
 		x: (evt.clientX - rect.left) / rect.width,
 		y: (evt.clientY - rect.top) / rect.height
 	};
+}
+
+function size_stage_to_video(){
+	if(!video_size.w || !video_size.h)
+		return;
+	let stage = document.getElementById('resizable');
+	// Match the stage to the source aspect ratio (and keep it inside the viewport)
+	// so the video fills it and no letterboxing is shown.
+	let max_w = 900;
+	let max_h = Math.max(240, Math.round(window.innerHeight * 0.82));
+	let scale = Math.min(max_w / video_size.w, max_h / video_size.h);
+	stage.style.width = Math.max(1, Math.round(video_size.w * scale)) + 'px';
+	stage.style.height = Math.max(1, Math.round(video_size.h * scale)) + 'px';
+}
+
+function fit_video_display(){
+	if(!video_size.w || !video_size.h)
+		return;
+	let container = document.getElementById('resizable');
+	let style = getComputedStyle(container);
+	let avail_w = container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+	let avail_h = container.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+	if(avail_w <= 0 || avail_h <= 0)
+		return;
+	// Fit the video inside the container while preserving the source aspect ratio.
+	let scale = Math.min(avail_w / video_size.w, avail_h / video_size.h);
+	let disp_w = Math.max(1, Math.floor(video_size.w * scale));
+	let disp_h = Math.max(1, Math.floor(video_size.h * scale));
+	$('.video_wrapper').css({'width': disp_w, 'height': disp_h});
 }
 
 function unscale(coords, rect){
