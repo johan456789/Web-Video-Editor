@@ -59,25 +59,48 @@ $(() => {
 
 	let drawing = false;
 	$("#canv").mousedown((e)=>{
-		let pos = getMousePos(canvas, e);
+		let pos = get_stage_pos(e);
 		drawing = true;
 		console.log('click', pos);
-		crop = [pos, null]
-	}).mousemove(function(e) {
-		if(!drawing)
+		crop = [pos, null];
+		$(document).on('mousemove.newcrop', function(e) {
+			if(!drawing)
+				return;
+			crop = [crop[0], get_stage_pos(e)];
+			render_crop_overlay();
+		}).on('mouseup.newcrop', function(e) {
+			if(!drawing)
+				return;
+			let pos = get_stage_pos(e);
+			console.log('Mouse Up', pos);
+			crop = [crop[0], pos];
+			drawing = false;
+			$(document).off('.newcrop');
+			if(crop[0].x === crop[1].x && crop[0].y === crop[1].y)
+				crop = [null, null];
+			render_crop_overlay();
+			console.log(crop);
+		});
+	});
+
+	$('.crop_handle').on('mousedown', function(e) {
+		let box = crop_bounds(crop);
+		if(!box)
 			return;
-		let pos = getMousePos(canvas, e);
-		crop = [crop[0], pos];
-	}).on('mouseup', function(e) {
-		if(!drawing)
+		e.preventDefault();
+		e.stopPropagation();
+		start_crop_drag({mode: 'resize', handle: this.dataset.handle, box: box});
+	});
+
+	$('.crop_box').on('mousedown', function(e) {
+		if(e.target.classList.contains('crop_handle'))
 			return;
-		let pos = getMousePos(canvas, e);
-		console.log('Mouse Up', pos);
-		crop = [crop[0], pos];
-		drawing = false;
-		if(crop[0].x === crop[1].x && crop[0].y === crop[1].y)
-			crop = [null, null];
-		console.log(crop);
+		let box = crop_bounds(crop);
+		if(!box)
+			return;
+		e.preventDefault();
+		e.stopPropagation();
+		start_crop_drag({mode: 'move', start: get_stage_pos(e), box: box});
 	});
 
 	$('.slider_time_pos').on('mousedown', function(e) {
@@ -171,14 +194,6 @@ function set_slider(){
 }
 
 
-function getMousePos(canvas, evt) {
-	let rect = canvas.getBoundingClientRect();
-	return {
-		x: (evt.clientX - rect.left) / rect.width,
-		y: (evt.clientY - rect.top) / rect.height
-	};
-}
-
 function size_stage_to_video(){
 	if(!video_size.w || !video_size.h)
 		return;
@@ -206,6 +221,103 @@ function fit_video_display(){
 	let disp_w = Math.max(1, Math.floor(video_size.w * scale));
 	let disp_h = Math.max(1, Math.floor(video_size.h * scale));
 	$('.video_wrapper').css({'width': disp_w, 'height': disp_h});
+}
+
+function clamp(v, lo, hi){
+	return Math.min(hi, Math.max(lo, v));
+}
+
+function get_stage_pos(evt){
+	let rect = document.querySelector('.video_wrapper').getBoundingClientRect();
+	return {
+		x: clamp((evt.clientX - rect.left) / rect.width, 0, 1),
+		y: clamp((evt.clientY - rect.top) / rect.height, 0, 1)
+	};
+}
+
+function crop_bounds(c){
+	if(!c || !c[0] || !c[1])
+		return null;
+	return {
+		'x': Math.min(c[0].x, c[1].x),
+		'y': Math.min(c[0].y, c[1].y),
+		'r': Math.max(c[0].x, c[1].x),
+		'b': Math.max(c[0].y, c[1].y)
+	};
+}
+
+const MIN_CROP = 0.02;
+let crop_drag = null;
+
+function start_crop_drag(state){
+	crop_drag = state;
+	$(document).on('mousemove.cropdrag', on_crop_drag_move)
+		.on('mouseup.cropdrag', on_crop_drag_end);
+}
+
+function on_crop_drag_move(e){
+	if(!crop_drag)
+		return;
+	let pos = get_stage_pos(e);
+	let b = Object.assign({}, crop_drag.box);
+	if(crop_drag.mode === 'move'){
+		let w = b.r - b.x;
+		let h = b.b - b.y;
+		b.x = clamp(b.x + (pos.x - crop_drag.start.x), 0, 1 - w);
+		b.r = b.x + w;
+		b.y = clamp(b.y + (pos.y - crop_drag.start.y), 0, 1 - h);
+		b.b = b.y + h;
+	}else{
+		let hnd = crop_drag.handle;
+		if(hnd.indexOf('w') !== -1) b.x = clamp(pos.x, 0, b.r - MIN_CROP);
+		if(hnd.indexOf('e') !== -1) b.r = clamp(pos.x, b.x + MIN_CROP, 1);
+		if(hnd.indexOf('n') !== -1) b.y = clamp(pos.y, 0, b.b - MIN_CROP);
+		if(hnd.indexOf('s') !== -1) b.b = clamp(pos.y, b.y + MIN_CROP, 1);
+	}
+	crop = [{'x': b.x, 'y': b.y}, {'x': b.r, 'y': b.b}];
+	render_crop_overlay();
+}
+
+function on_crop_drag_end(){
+	crop_drag = null;
+	$(document).off('.cropdrag');
+}
+
+function set_shade(el, x, y, w, h){
+	if(!el)
+		return;
+	el.style.left = x + 'px';
+	el.style.top = y + 'px';
+	el.style.width = Math.max(0, w) + 'px';
+	el.style.height = Math.max(0, h) + 'px';
+}
+
+function render_crop_overlay(){
+	let overlay = document.querySelector('.crop_overlay');
+	if(!overlay)
+		return;
+	let b = crop_bounds(crop);
+	if(!b || b.r - b.x <= 0 || b.b - b.y <= 0){
+		overlay.classList.add('hidden');
+		return;
+	}
+	overlay.classList.remove('hidden');
+	let wrapper = document.querySelector('.video_wrapper');
+	let W = wrapper.clientWidth;
+	let H = wrapper.clientHeight;
+	let left = b.x * W;
+	let top = b.y * H;
+	let width = (b.r - b.x) * W;
+	let height = (b.b - b.y) * H;
+	let box = overlay.querySelector('.crop_box');
+	box.style.left = left + 'px';
+	box.style.top = top + 'px';
+	box.style.width = width + 'px';
+	box.style.height = height + 'px';
+	set_shade(overlay.querySelector('.shade_top'), 0, 0, W, top);
+	set_shade(overlay.querySelector('.shade_bottom'), 0, top + height, W, H - (top + height));
+	set_shade(overlay.querySelector('.shade_left'), 0, top, left, height);
+	set_shade(overlay.querySelector('.shade_right'), left + width, top, W - (left + width), height);
 }
 
 function unscale(coords, rect){
@@ -299,12 +411,7 @@ function update(){
 	// noinspection JSCheckFunctionSignatures
 	ctx.drawImage(video, 0, 0, canvas.width, canvas.height); //TODO: Subimage using crop.
 
-	if(has_crop()){
-		let rect = canvas.getBoundingClientRect();
-		let box = crop_box(crop, rect.width, rect.height);
-		ctx.strokeStyle="#FF0000";
-		ctx.strokeRect(box.x, box.y, box.w, box.h);
-	}
+	render_crop_overlay();
 
 	// Fast mode cannot be combined with a crop (a filter forces a re-encode),
 	// so disable it and fall back to accurate while a crop is set.
