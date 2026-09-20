@@ -38,6 +38,23 @@
 		ffmpeg -i in.mp4 -filter:v "crop=80:60:200:100" -c:a copy out.mp4
 	</div>
 
+	<fieldset class="cut_mode">
+		<legend>Cut mode:</legend>
+		<span class="cut_mode_opt">
+			<span class="cut_mode_opt_row">
+				<input type="radio" id="cut_mode_accurate" name="cut_mode" value="accurate" checked />
+				<label class="cut_mode_opt_label" for="cut_mode_accurate">Accurate (re-encode)</label>
+			</span>
+		</span>
+		<span class="cut_mode_opt">
+			<span class="cut_mode_opt_row">
+				<input type="radio" id="cut_mode_fast" name="cut_mode" value="fast" title="Stream copy: near-instant, but cuts snap to the nearest keyframe before the start time." />
+				<label class="cut_mode_opt_label" for="cut_mode_fast" title="Stream copy: near-instant, but cuts snap to the nearest keyframe before the start time.">Fast (stream copy, keyframe-aligned)</label>
+			</span>
+			<span class="cut_mode_note hidden">Unavailable while a crop is set</span>
+		</span>
+	</fieldset>
+
 	<input type="button" id="run_ffmpeg" value="Run FFmpeg in-browser!"/>
 
 	<div class="ffmpeg_log">

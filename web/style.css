@@ -87,6 +87,63 @@ input[type=checkbox]{
     width: 40px;
 }
 
+.cut_mode {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 8px 12px;
+    border: 1px solid #999999;
+    border-radius: 4px;
+    text-align: left;
+}
+
+.cut_mode legend {
+    padding: 0 4px;
+    font-weight: bold;
+}
+
+.cut_mode input[type=radio] {
+    margin: 0;
+    flex: none;
+    cursor: pointer;
+}
+
+.cut_mode input[type=radio]:disabled {
+    cursor: not-allowed;
+}
+
+.cut_mode_opt {
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 2px;
+    vertical-align: top;
+    margin-right: 12px;
+}
+
+.cut_mode_opt_row {
+    display: contents;
+}
+
+.cut_mode_opt_label {
+    margin-left: 0;
+    cursor: pointer;
+}
+
+.cut_mode input[type=radio]:disabled + .cut_mode_opt_label {
+    color: #999999;
+    cursor: not-allowed;
+}
+
+.cut_mode_note {
+    grid-column: 2;
+    justify-self: start;
+    color: #999999;
+    font-size: 11px;
+    font-style: italic;
+    white-space: nowrap;
+}
+
 .ffmpeg {
     vertical-align: middle;
     text-align: center;

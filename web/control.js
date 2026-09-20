@@ -248,9 +248,20 @@ async function copyText() {
 	}).catch(console.error)
 }
 
+function current_cut_mode(){
+	let checked = $('input[name="cut_mode"]:checked');
+	return checked.length ? checked.val() : 'accurate';
+}
+
+function has_crop(){
+	return !!(crop[0] && crop[1]);
+}
+
 function build_ffmpeg_string(for_browser_run=false){
 	let ts = (time_start?time_start.toFixed(2):0);
 	let te = (time_end?time_end.toFixed(2):0);
+	// Cropping needs a filter, so it always forces a re-encode.
+	let fast_copy = current_cut_mode() === 'fast' && !has_crop();
 	let args = [
 		'-i', `${for_browser_run ? filename : '"' + filename + '"'}`,
 		'-movflags', 'faststart',
@@ -259,11 +270,14 @@ function build_ffmpeg_string(for_browser_run=false){
 	if (ts) {
 		args.unshift('-ss', ts);
 	}
-	if(crop[0] && crop[1]){
+	if(has_crop()){
 		let box = crop_box(crop, video_size.w, video_size.h);
 		let crp = `"crop=${box.w}:${box.h}:${box.x}:${box.y}"`;
 		if (for_browser_run) crp = crp.replace(/"/g, '');
 		args.push('-filter:v', crp);
+	}
+	if (fast_copy) {
+		args.push('-c:v', 'copy');
 	}
 	let fn = for_browser_run ? 'output.mp4' : `"edit - ${filename}"`;
 	args.push('-c:a', 'copy');
@@ -285,12 +299,21 @@ function update(){
 	// noinspection JSCheckFunctionSignatures
 	ctx.drawImage(video, 0, 0, canvas.width, canvas.height); //TODO: Subimage using crop.
 
-	if(crop[0] && crop[1]){
+	if(has_crop()){
 		let rect = canvas.getBoundingClientRect();
 		let box = crop_box(crop, rect.width, rect.height);
 		ctx.strokeStyle="#FF0000";
 		ctx.strokeRect(box.x, box.y, box.w, box.h);
 	}
+
+	// Fast mode cannot be combined with a crop (a filter forces a re-encode),
+	// so disable it and fall back to accurate while a crop is set.
+	let crop_set = has_crop();
+	$("#cut_mode_fast").prop('disabled', crop_set);
+	if (crop_set && current_cut_mode() === 'fast') {
+		$("#cut_mode_accurate").prop('checked', true);
+	}
+	$(".cut_mode_note").toggleClass('hidden', !crop_set);
 
 	let mpeg = 'ffmpeg ' + build_ffmpeg_string(false);
 	if($('.ffmpeg').text() !== mpeg) {
